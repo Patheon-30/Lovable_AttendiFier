@@ -1,0 +1,131 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/build-apk.yml"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.7" }
+      - name: Create Android app files
+        run: |
+          mkdir -p android-app/app
+          cat > android-app/app/build.gradle <<'XEOF'
+          plugins { id "com.android.application" }
+          android {
+              namespace "app.present.attendance"
+              compileSdk 34
+              defaultConfig {
+                  applicationId "app.present.attendance"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+          }
+          XEOF
+          mkdir -p android-app/app/src/main
+          cat > android-app/app/src/main/AndroidManifest.xml <<'XEOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.CAMERA" />
+              <uses-feature android:name="android.hardware.camera" android:required="false" />
+              <application android:label="Present" android:icon="@drawable/ic_launcher"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          XEOF
+          mkdir -p android-app/app/src/main/java/app/present/attendance
+          cat > android-app/app/src/main/java/app/present/attendance/MainActivity.java <<'XEOF'
+          package app.present.attendance;
+          
+          import android.Manifest;
+          import android.app.Activity;
+          import android.content.pm.PackageManager;
+          import android.os.Bundle;
+          import android.webkit.PermissionRequest;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          
+          public class MainActivity extends Activity {
+              private static final String APP_URL = "https://present-snap-connect.lovable.app";
+              private WebView web;
+              private PermissionRequest pending;
+          
+              @Override protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  web = new WebView(this);
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+                  web.setWebViewClient(new WebViewClient());
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override public void onPermissionRequest(PermissionRequest r) {
+                          if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                              r.grant(r.getResources());
+                          } else { pending = r; requestPermissions(new String[]{Manifest.permission.CAMERA}, 1); }
+                      }
+                  });
+                  setContentView(web);
+                  if (b != null) web.restoreState(b); else web.loadUrl(APP_URL);
+              }
+          
+              @Override public void onRequestPermissionsResult(int c, String[] p, int[] g) {
+                  if (pending == null) return;
+                  if (g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) pending.grant(pending.getResources()); else pending.deny();
+                  pending = null;
+              }
+          
+              @Override protected void onSaveInstanceState(Bundle o) { super.onSaveInstanceState(o); web.saveState(o); }
+          
+              @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+          }
+          XEOF
+          mkdir -p android-app/app/src/main/res/drawable
+          cat > android-app/app/src/main/res/drawable/ic_launcher.xml <<'XEOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#1F6F5C" android:pathData="M0,0h108v108h-108z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M46,70 L30,54 L36,48 L46,58 L72,32 L78,38 Z"/>
+          </vector>
+          XEOF
+          mkdir -p android-app
+          cat > android-app/build.gradle <<'XEOF'
+          plugins { id "com.android.application" version "8.5.2" apply false }
+          XEOF
+          mkdir -p android-app
+          cat > android-app/gradle.properties <<'XEOF'
+          android.useAndroidX=true
+          XEOF
+          mkdir -p android-app
+          cat > android-app/settings.gradle <<'XEOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = "Present"
+          include ":app"
+          XEOF
+      - name: Build APK
+        working-directory: android-app
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Present-APK
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
