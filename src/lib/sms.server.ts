@@ -1,3 +1,20 @@
+export function parentAttendanceMessage({
+  studentName,
+  section,
+  period,
+  time,
+  status,
+}: {
+  studentName: string;
+  section: string;
+  period: "morning" | "afternoon";
+  time: string;
+  status: string;
+}): string {
+  const greeting = period === "morning" ? "Good morning" : "Good afternoon";
+  return `${greeting}! I would like to inform you that your child ${studentName} from ${section} has safely arrived at school today at ${time}. He/She is now in the classroom and marked ${status}. Thank you for ensuring his/her timely arrival.`;
+}
+
 /** Sends an SMS through the user's SMSGate Android phone. Never throws. */
 export async function sendSms(phone: string, text: string): Promise<boolean> {
   const base = (process.env["SMSGATE_SERVER_URL"] || "https://api.sms-gate.app").replace(/\/+$/, "");

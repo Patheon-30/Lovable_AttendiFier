@@ -62,12 +62,17 @@ export const recordScan = createServerFn({ method: "POST" })
     const { data: full } = await supabaseAdmin.from("students").select("parent_name,parent_phone").eq("id", student.id).maybeSingle();
     let smsSent = false;
     if (full) {
-      const { sendSms } = await import("./sms.server");
+      const { parentAttendanceMessage, sendSms } = await import("./sms.server");
       const time = new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" });
-      const label = slot.period === "morning" ? "morning" : "afternoon";
       smsSent = await sendSms(
         full.parent_phone,
-        `Present: Hi ${full.parent_name}, ${student.name} (${student.section}) scanned for the ${label} at ${time}. Attendance: ${slot.status}.`,
+        parentAttendanceMessage({
+          studentName: student.name,
+          section: student.section,
+          period: slot.period,
+          time,
+          status: slot.status,
+        }),
       );
     }
     return { result: "saved" as const, period: slot.period, late: slot.late, status: slot.status, smsSent };

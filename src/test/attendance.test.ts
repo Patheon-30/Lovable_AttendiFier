@@ -12,7 +12,10 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({ inputValidator: () => ({ handler: (fn: unknown) => fn }) }),
 }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from: mocks.from } }));
-vi.mock("@/lib/sms.server", () => ({ sendSms: mocks.sendSms }));
+vi.mock("@/lib/sms.server", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/sms.server")>(),
+  sendSms: mocks.sendSms,
+}));
 vi.mock("@/lib/periods", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/periods")>(),
   manilaParts: () => ({ day: "2026-10-25", minutes: mocks.minutes }),
@@ -20,6 +23,7 @@ vi.mock("@/lib/periods", async (importOriginal) => ({
 
 import { recordScan } from "@/lib/student.functions";
 import { GATE_CODE } from "@/lib/periods";
+import { parentAttendanceMessage } from "@/lib/sms.server";
 
 describe("live attendance restrictions", () => {
   beforeEach(() => {
@@ -45,5 +49,17 @@ describe("live attendance restrictions", () => {
     expect(await recordScan({ data: { token: "test-device-token-123456789", code: GATE_CODE } })).toEqual({ result: "closed" });
     expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.sendSms).not.toHaveBeenCalled();
+  });
+
+  it("uses the new parent arrival message with the student's details", () => {
+    expect(parentAttendanceMessage({
+      studentName: "Juan Dela Cruz",
+      section: "Grade 11 - Psalms",
+      period: "morning",
+      time: "7:00 AM",
+      status: "present",
+    })).toBe(
+      "Good morning! I would like to inform you that your child Juan Dela Cruz from Grade 11 - Psalms has safely arrived at school today at 7:00 AM. He/She is now in the classroom and marked present. Thank you for ensuring his/her timely arrival.",
+    );
   });
 });
