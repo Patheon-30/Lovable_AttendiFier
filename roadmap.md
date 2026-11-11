@@ -8,3 +8,6 @@
 - [x] Add monthly teacher records and one-click Excel compilation.
 - [x] Store scheduled automatic time-outs at morning/afternoon absent cutoffs.
 - [x] Verify attendance rules and monthly export.
+- [x] Publish the codebase to the user's GitHub repository.
+- [ ] Package a signed browser-backed Android APK for AttendiFier v1.1.
+- [ ] Upload and verify the APK on the GitHub v1.1 release.

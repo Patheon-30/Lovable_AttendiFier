@@ -18,3 +18,7 @@ Monthly attendance uses an insert-triggered snapshot archive with teacher-sectio
 Automatic time-outs are persisted scheduled cutoffs and displayed only after they pass; they never claim verified departures, and historical scans without time-out evidence stay blank.
 
 Excel compilation runs in the browser from paginated RLS-scoped archived records with one sheet per month, preserving historical status instead of recalculating it under newer schedules.
+
+Code reaches the user's GitHub repository through the connector gateway (Contents API for the first commit, then the Git Data API tree); the workspace never runs git push, and the uploaded copy excludes .env, .git, dependencies, and backend config.
+
+Android packaging is a browser-backed launcher for the published HTTPS app, not an embedded WebView, so existing browser camera, passkey, storage, and Excel-download behavior remains intact; APK builds do not bundle server secrets or claim offline support.
