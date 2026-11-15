@@ -24,3 +24,5 @@ Code reaches the user's GitHub repository through the connector gateway (Content
 Android packaging is a browser-backed launcher for the published HTTPS app, not an embedded WebView, so existing browser camera, passkey, storage, and Excel-download behavior remains intact; APK builds do not bundle server secrets or claim offline support.
 
 Students reach the class view only after a check-in today; a token-checked server function returns section classmates' and teachers' names only, and teacher display names live in account metadata so no schema change is needed.
+
+The fingerprint camera lock is a device-side WebAuthn check (no server-stored challenge): phones with a platform authenticator must save a fingerprint before scanning and confirm it to open the camera, while phones without one fall back to plain scanning so no student is locked out.

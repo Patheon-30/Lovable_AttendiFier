@@ -39,9 +39,29 @@ export async function addFingerprint(token: string, name: string) {
   if (!cred) throw new Error("Fingerprint was not added");
   const saved: Saved = { credentialId: b64(cred.rawId), token, name };
   localStorage.setItem(BIOMETRIC_KEY, JSON.stringify(saved));
+  markUnlocked();
 }
 
-export async function loginWithFingerprint() {
+const UNLOCK_KEY = "present.finger.unlocked_at";
+const UNLOCK_WINDOW_MS = 5 * 60 * 1000;
+
+/** True on phones whose browser can use the built-in fingerprint reader (never inside the editor preview frame). */
+export async function fingerprintRequired() {
+  if (typeof window === "undefined" || !window.PublicKeyCredential || window.self !== window.top) return false;
+  try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch { return false; }
+}
+
+export function recentlyUnlocked(now = Date.now()) {
+  const at = Number(sessionStorage.getItem(UNLOCK_KEY) ?? 0);
+  return at > 0 && now - at < UNLOCK_WINDOW_MS;
+}
+
+function markUnlocked() {
+  sessionStorage.setItem(UNLOCK_KEY, String(Date.now()));
+}
+
+/** Asks for the saved fingerprint; resolves once the phone confirms it. */
+export async function verifyFingerprint() {
   const saved = getSavedFingerprint();
   if (!saved) throw new Error("No fingerprint saved on this phone");
   const res = await navigator.credentials.get({
@@ -54,6 +74,12 @@ export async function loginWithFingerprint() {
     },
   });
   if (!res) throw new Error("Fingerprint not recognized");
+  markUnlocked();
+  return saved;
+}
+
+export async function loginWithFingerprint() {
+  const saved = await verifyFingerprint();
   localStorage.setItem(DEVICE_KEY, saved.token);
   return saved;
 }

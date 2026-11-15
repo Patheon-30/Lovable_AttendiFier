@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Fingerprint } from "lucide-react";
-import { addFingerprint, fingerprintAvailable, forgetFingerprint, fingerprintError } from "@/lib/biometric";
+import { addFingerprint, fingerprintRequired } from "@/lib/biometric";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Input } from "@/components/ui/input";
@@ -33,8 +33,7 @@ function Register() {
   const [busy, setBusy] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [canFinger, setCanFinger] = useState(false);
-  const [useFinger, setUseFinger] = useState(false);
-  useEffect(() => { fingerprintAvailable().then(setCanFinger); }, []);
+  useEffect(() => { fingerprintRequired().then(setCanFinger); }, []);
   const carrier = detectCarrier(f.phone);
   const normalized = normalizePhone(f.phone);
 
@@ -47,10 +46,11 @@ function Register() {
     try {
       const token = getDeviceToken() ?? createDeviceToken();
       await registerStudent({ data: { token, name: f.name, section: f.section, parentName: f.parentName, parentPhone: normalized } });
-      if (useFinger) {
+      // New students add their fingerprint right away; if it doesn't go through, the scan page asks again.
+      if (canFinger) {
         try { await addFingerprint(token, f.name.trim()); toast.success("Fingerprint added"); }
-        catch (e) { toast.error(fingerprintError(e)); }
-      } else forgetFingerprint();
+        catch { toast.error("Fingerprint wasn't added — you'll add it before scanning"); }
+      }
       toast.success("You're all set");
       navigate({ to: "/scan" });
     } catch (err) {
@@ -81,14 +81,13 @@ function Register() {
             </div>
           </Field>
           {canFinger && (
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 text-sm">
-              <input type="checkbox" checked={useFinger} onChange={(e) => setUseFinger(e.target.checked)} className="h-4 w-4 accent-primary" />
-              <Fingerprint className="h-5 w-5 text-primary" />
-              <span>Add fingerprint <span className="block text-xs text-muted-foreground">Log back in on this phone with your fingerprint</span></span>
-            </label>
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm">
+              <Fingerprint className="h-5 w-5 shrink-0 text-primary" />
+              <span>Next, add your fingerprint <span className="block text-xs text-muted-foreground">It unlocks the camera each time you scan</span></span>
+            </div>
           )}
           <Button type="submit" disabled={busy} className="glow h-12 w-full rounded-xl text-base font-semibold">
-            {busy ? "Saving…" : "Save & start scanning"}
+            {busy ? "Saving…" : canFinger ? "Save & add fingerprint" : "Save & start scanning"}
           </Button>
         </form>
         <Button variant="ghost" className="mt-4" onClick={() => setPracticeOpen(true)}>Practice entry</Button>

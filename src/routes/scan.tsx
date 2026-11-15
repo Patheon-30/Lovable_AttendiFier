@@ -5,10 +5,9 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { clearDeviceToken, getDeviceToken } from "@/lib/device";
-import { addFingerprint, fingerprintError, getSavedFingerprint } from "@/lib/biometric";
+import { addFingerprint, fingerprintError, fingerprintRequired, getSavedFingerprint, recentlyUnlocked, verifyFingerprint } from "@/lib/biometric";
+import { cameraGate, type CameraGate } from "@/lib/camera-gate";
 import { getStudentStatus, recordScan } from "@/lib/student.functions";
-
-const FINGER_DISMISSED_KEY = "present.finger.dismissed";
 
 export const Route = createFileRoute("/scan")({
   ssr: false,
@@ -34,7 +33,7 @@ function Scan() {
   const [status, setStatus] = useState<Status | null>(null);
   const [msg, setMsg] = useState<Msg>(null);
   const [scanning, setScanning] = useState(false);
-  const [showFinger, setShowFinger] = useState(false);
+  const [gate, setGate] = useState<CameraGate | null>(null);
   const [fingerBusy, setFingerBusy] = useState(false);
   const busy = useRef(false);
   const scanner = useRef<{ stop: () => Promise<void>; isScanning: boolean } | null>(null);
@@ -50,8 +49,10 @@ function Scan() {
   useEffect(() => {
     if (!token) navigate({ to: "/register", replace: true });
     else refresh();
-    // Offer fingerprint setup before the camera opens, unless saved or dismissed.
-    if (!getSavedFingerprint() && !localStorage.getItem(FINGER_DISMISSED_KEY)) setShowFinger(true);
+    // New students add a fingerprint before scanning; after that it unlocks the camera.
+    fingerprintRequired().then((supported) =>
+      setGate(cameraGate({ supported, token, saved: getSavedFingerprint(), recentlyUnlocked: recentlyUnlocked() })),
+    );
   }, [token, navigate, refresh]);
 
   async function setupFingerprint() {
@@ -59,18 +60,29 @@ function Scan() {
     setFingerBusy(true);
     try {
       await addFingerprint(token, status.student.name);
-      toast.success("Fingerprint added — use it to log in next time");
-      setShowFinger(false);
+      toast.success("Fingerprint added — it unlocks the camera from now on");
+      setGate("open");
     } catch (e) {
-      toast.error(fingerprintError(e));
+      if (e instanceof Error && e.name === "NotSupportedError") {
+        toast.error("This phone can't save a fingerprint — you can scan without it");
+        setGate("open");
+      } else toast.error(fingerprintError(e));
     } finally {
       setFingerBusy(false);
     }
   }
 
-  function skipFingerprint() {
-    localStorage.setItem(FINGER_DISMISSED_KEY, "1");
-    setShowFinger(false);
+  async function unlockCamera() {
+    setFingerBusy(true);
+    try {
+      await verifyFingerprint();
+      setGate("open");
+      await start();
+    } catch (e) {
+      toast.error(fingerprintError(e));
+    } finally {
+      setFingerBusy(false);
+    }
   }
 
   const stop = useCallback(async () => {
@@ -134,18 +146,15 @@ function Scan() {
         <p className="text-sm text-muted-foreground">{status?.student ? `${status.student.section}` : "Loading…"}</p>
         <h1 className="text-3xl font-bold">Hi, {status?.student?.name.split(" ")[0] ?? "there"}</h1>
 
-        {showFinger && (
+        {gate === "setup" && (
           <div className="glass mt-6 flex items-start gap-4 rounded-2xl border-primary/40 p-5">
             <Fingerprint className="h-8 w-8 shrink-0 text-primary" />
             <div className="flex-1">
-              <p className="font-semibold">Add your fingerprint?</p>
-              <p className="mt-1 text-sm text-muted-foreground">Log back in on this phone with your fingerprint instead of registering again.</p>
-              <div className="mt-3 flex gap-2">
-                <Button size="sm" onClick={setupFingerprint} disabled={fingerBusy} className="glow rounded-xl">
-                  {fingerBusy ? "Waiting for fingerprint…" : "Add fingerprint"}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={skipFingerprint}>Not now</Button>
-              </div>
+              <p className="font-semibold">Add your fingerprint to start scanning</p>
+              <p className="mt-1 text-sm text-muted-foreground">You only do this once on this phone. After that, your fingerprint unlocks the camera.</p>
+              <Button size="sm" onClick={setupFingerprint} disabled={fingerBusy || !status?.student} className="glow mt-3 rounded-xl">
+                {fingerBusy ? "Waiting for fingerprint…" : "Add fingerprint"}
+              </Button>
             </div>
           </div>
         )}
@@ -154,10 +163,22 @@ function Scan() {
           <div id="qr-reader" className="absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
           {!scanning && (
             <div className="absolute inset-0 grid place-items-center p-6 text-center">
-              <div>
-                <p className="text-sm text-muted-foreground">Point at the gate or classroom QR</p>
-                <Button onClick={start} className="glow mt-4 h-12 rounded-xl px-8 text-base font-semibold">Start scanning</Button>
-              </div>
+              {gate === "open" ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">Point at the gate or classroom QR</p>
+                  <Button onClick={start} className="glow mt-4 h-12 rounded-xl px-8 text-base font-semibold">Start scanning</Button>
+                </div>
+              ) : gate === "unlock" ? (
+                <div>
+                  <Fingerprint className="mx-auto h-10 w-10 text-primary" />
+                  <p className="mt-2 text-sm text-muted-foreground">Use your fingerprint to open the camera</p>
+                  <Button onClick={unlockCamera} disabled={fingerBusy} className="glow mt-4 h-12 rounded-xl px-8 text-base font-semibold">
+                    {fingerBusy ? "Waiting for fingerprint…" : "Unlock camera"}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">{gate === "setup" ? "Add your fingerprint above to unlock the camera" : "Getting the camera ready…"}</p>
+              )}
             </div>
           )}
           <div className="pointer-events-none absolute inset-[18%]">
