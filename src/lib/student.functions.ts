@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { manilaParts, parseCode, periodAt } from "./periods";
 import { detectCarrier, normalizePhone } from "./phone";
-import { classmatesOf, escapeLike, sameSection, teacherNames } from "./classroom";
+import { classmatesOf, escapeLike, sameSection, studentKey, teacherNames } from "./classroom";
 
 const tokenSchema = z.string().min(20).max(100);
 
@@ -20,11 +20,49 @@ export const registerStudent = createServerFn({ method: "POST" })
     const phone = normalizePhone(data.parentPhone);
     if (!phone) throw new Error("Enter a valid PH mobile number");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("students").upsert(
-      { device_token: data.token, name: data.name, section: data.section, parent_name: data.parentName, parent_phone: phone, carrier: detectCarrier(phone) },
-      { onConflict: "device_token" },
-    );
+    const name = data.name.replace(/\s+/g, " ");
+    const section = data.section.replace(/\s+/g, " ");
+    const details = { device_token: data.token, name, section, parent_name: data.parentName, parent_phone: phone, carrier: detectCarrier(phone) };
+
+    // Same name in the same section is the same student: logging out and registering again reuses their record.
+    const { data: candidates, error: findError } = await supabaseAdmin
+      .from("students").select("id,name,section,created_at")
+      .ilike("section", `%${escapeLike(section)}%`)
+      .order("created_at").limit(1000);
+    if (findError) throw new Error("Could not save registration");
+    const key = studentKey(name, section);
+    const matches = (candidates ?? []).filter((s) => studentKey(s.name, s.section) === key);
+    const keep = matches[0];
+
+    if (!keep) {
+      const { error } = await supabaseAdmin.from("students").upsert(details, { onConflict: "device_token" });
+      if (error) throw new Error("Could not save registration");
+      return { ok: true };
+    }
+
+    // This phone was linked to a different student before: unlink it so the phone can move to this student.
+    const { error: unlinkError } = await supabaseAdmin.from("students")
+      .update({ device_token: `retired-${crypto.randomUUID()}` })
+      .eq("device_token", data.token).neq("id", keep.id);
+    if (unlinkError) throw new Error("Could not save registration");
+
+    const { error } = await supabaseAdmin.from("students").update(details).eq("id", keep.id);
     if (error) throw new Error("Could not save registration");
+
+    // Fold older duplicates into the kept record, moving check-ins that don't clash, then remove the extra copies.
+    for (const dup of matches.slice(1)) {
+      const [{ data: kept }, { data: theirs }] = await Promise.all([
+        supabaseAdmin.from("attendance").select("day,period").eq("student_id", keep.id),
+        supabaseAdmin.from("attendance").select("id,day,period").eq("student_id", dup.id),
+      ]);
+      const taken = new Set((kept ?? []).map((a) => `${a.day}|${a.period}`));
+      const movable = (theirs ?? []).filter((a) => !taken.has(`${a.day}|${a.period}`)).map((a) => a.id);
+      if (movable.length) {
+        const { error: moveError } = await supabaseAdmin.from("attendance").update({ student_id: keep.id }).in("id", movable);
+        if (moveError) continue;
+      }
+      await supabaseAdmin.from("students").delete().eq("id", dup.id);
+    }
     return { ok: true };
   });
 

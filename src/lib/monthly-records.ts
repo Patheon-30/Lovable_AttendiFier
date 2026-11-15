@@ -1,6 +1,18 @@
 import type { Tables } from "@/integrations/supabase/types";
+import { studentKey } from "./classroom";
 
 export type MonthlyRecord = Tables<"monthly_attendance">;
+
+/** Same name + same section + same day + same period counts once (earliest check-in wins). */
+export function uniqueMonthlyRecords(records: MonthlyRecord[]): MonthlyRecord[] {
+  const keyOf = (row: MonthlyRecord) => `${studentKey(row.student_name, row.section)}|${row.day}|${row.period}`;
+  const byKey = new Map<string, MonthlyRecord>();
+  for (const row of records) {
+    const prev = byKey.get(keyOf(row));
+    if (!prev || row.time_in < prev.time_in) byKey.set(keyOf(row), row);
+  }
+  return records.filter((row) => byKey.get(keyOf(row)) === row);
+}
 
 export function displayTime(timestamp: string | null) {
   return timestamp ? new Date(timestamp).toLocaleTimeString("en-US", {

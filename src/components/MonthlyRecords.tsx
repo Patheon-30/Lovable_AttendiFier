@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { manilaParts } from "@/lib/periods";
-import { buildMonthlyWorkbook, completedTimeOut, displayTime, downloadWorkbook, type MonthlyRecord } from "@/lib/monthly-records";
+import { buildMonthlyWorkbook, uniqueMonthlyRecords, completedTimeOut, displayTime, downloadWorkbook, type MonthlyRecord } from "@/lib/monthly-records";
 
 export function MonthlyRecords({ section, userId }: { section: string; userId: string }) {
   const [month, setMonth] = useState(manilaParts().day.slice(0, 7));
@@ -21,7 +21,7 @@ export function MonthlyRecords({ section, userId }: { section: string; userId: s
         const { data, error } = await supabase.from("monthly_attendance").select("*").eq("section", section).order("day", { ascending: false }).order("id").range(start, start + 999);
         if (error) throw error;
         all.push(...data);
-        if (data.length < 1000) return all;
+        if (data.length < 1000) return uniqueMonthlyRecords(all);
       }
     },
   });

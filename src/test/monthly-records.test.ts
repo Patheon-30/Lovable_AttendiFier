@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMonthlyWorkbook, completedTimeOut, type MonthlyRecord } from "@/lib/monthly-records";
+import { buildMonthlyWorkbook, completedTimeOut, uniqueMonthlyRecords, type MonthlyRecord } from "@/lib/monthly-records";
 import ExcelJS from "exceljs";
 
 function row(period: string, scheduled: string): MonthlyRecord {
@@ -44,5 +44,13 @@ describe("monthly Excel compilation", () => {
     expect(novemberSheet?.getCell("E5").value).toBe("late");
     expect(novemberSheet?.getCell("F5").value).toBe("12:40 PM");
     expect(novemberSheet?.getCell("G5").value).toBeNull();
+  });
+});
+describe("duplicate students in monthly records", () => {
+  it("counts the same student's same-period check-in once, keeping the earliest", () => {
+    const first = { ...row("morning", "2026-10-30T23:05:00Z"), id: "a", student_id: "s1", time_in: "2026-10-30T21:00:00Z" };
+    const again = { ...first, id: "b", student_id: "s2", student_name: " test  student ", time_in: "2026-10-30T22:30:00Z" };
+    const afternoon = { ...first, id: "c", period: "afternoon" };
+    expect(uniqueMonthlyRecords([again, first, afternoon]).map((r) => r.id)).toEqual(["a", "c"]);
   });
 });

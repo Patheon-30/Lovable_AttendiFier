@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { classCode, manilaParts } from "@/lib/periods";
-import { TEACHER_NAME_MAX, teacherDisplayName } from "@/lib/classroom";
+import { TEACHER_NAME_MAX, mergeDuplicateStudents, teacherDisplayName } from "@/lib/classroom";
 import { QrSheet } from "./gate";
 
 export const Route = createFileRoute("/teacher")({
@@ -55,13 +55,13 @@ function Teacher() {
     enabled: !!section,
     refetchInterval: 20000,
     queryFn: async () => {
-      const { data: students } = await supabase.from("students").select("id,name,parent_name,parent_phone,carrier").order("name");
+      const { data: students } = await supabase.from("students").select("id,name,section,created_at,parent_name,parent_phone,carrier").order("name");
       const { data: att } = await supabase.from("attendance").select("student_id,period,late,scanned_at,status").eq("day", day);
-      return (students ?? []).map((s) => ({
+      return mergeDuplicateStudents((students ?? []).map((s) => ({
         ...s,
         morning: att?.find((a) => a.student_id === s.id && a.period === "morning"),
         afternoon: att?.find((a) => a.student_id === s.id && a.period === "afternoon"),
-      }));
+      })));
     },
   });
 
@@ -83,9 +83,9 @@ function Teacher() {
     qc.invalidateQueries({ queryKey: ["settings", userId] });
   }
 
-  async function remove(id: string, name: string) {
+  async function remove(ids: string[], name: string) {
     if (!confirm(`Remove ${name} from your roster? Their phone will need to register again.`)) return;
-    const { error } = await supabase.from("students").delete().eq("id", id);
+    const { error } = await supabase.from("students").delete().in("id", ids);
     if (error) { toast.error("Couldn't remove student"); return; }
     qc.invalidateQueries({ queryKey: ["roster"] });
   }
@@ -148,7 +148,7 @@ function Teacher() {
                   </div>
                   <Badge label="AM" row={r.morning} fmt={fmt} />
                   <Badge label="PM" row={r.afternoon} fmt={fmt} />
-                  <Button variant="ghost" size="icon" aria-label={`Remove ${r.name}`} onClick={() => remove(r.id, r.name)}><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" aria-label={`Remove ${r.name}`} onClick={() => remove(r.ids, r.name)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
             </div>
