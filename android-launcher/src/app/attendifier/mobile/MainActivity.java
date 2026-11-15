@@ -25,7 +25,7 @@ import java.util.List;
  * app's package and signing certificate; otherwise the browser safely shows it.
  */
 public final class MainActivity extends Activity {
-    private static final String APP_URL = "https://present-snap-connect.lovable.app";
+    private static final String APP_URL = "https://attendifier.lovable.app";
     private static final String CHROME = "com.android.chrome";
 
     private CustomTabsServiceConnection connection;

@@ -1,6 +1,6 @@
 # AttendiFier for Android
 
-Version 1.3 opens https://present-snap-connect.lovable.app **full screen, without
+Version 1.3 opens https://attendifier.lovable.app **full screen, without
 the browser address bar**, as a Trusted Web Activity in the phone's browser
 (Chrome, Samsung Internet, Edge and other supporting browsers). Camera access,
 fingerprint/passkey support, downloads and saved data stay in the browser, exactly
