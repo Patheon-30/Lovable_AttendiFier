@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.attendifier.mobile",
+      "sha256_cert_fingerprints": [
+        "87:20:62:BC:18:A4:DC:AE:17:35:45:ED:78:F8:E0:FC:8C:12:4B:07:73:76:8F:34:0C:FD:3C:CC:76:52:C4:98"
+      ]
+    }
+  }
+]

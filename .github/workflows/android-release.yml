@@ -1,11 +1,18 @@
 name: Build Android APK
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build and release (for example 1.3)
+        required: true
+        default: "1.3"
 permissions:
   contents: write
 jobs:
   apk:
     runs-on: ubuntu-latest
+    env:
+      ATTENDIFIER_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -33,9 +40,29 @@ jobs:
           rm "$ANDROID_KEYSTORE"
       - uses: actions/upload-artifact@v4
         with:
-          name: AttendiFier-v1.1
-          path: android-launcher/build/AttendiFier-v1.1.apk
-      - name: Attach APK to the v1.1 release
+          name: AttendiFier-v${{ inputs.version }}
+          path: android-launcher/build/AttendiFier-v${{ inputs.version }}.apk
+      - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload v1.1 android-launcher/build/AttendiFier-v1.1.apk --clobber
+        run: |
+          V="$ATTENDIFIER_VERSION"
+          APK="android-launcher/build/AttendiFier-v$V.apk"
+          SUM="$(sha256sum "$APK" | cut -d' ' -f1)"
+          {
+            echo "AttendiFier v$V for Android."
+            echo
+            echo "- Opens AttendiFier full screen with no browser address bar (Trusted Web Activity)."
+            echo "- Camera, fingerprint/passkey, saved data and Excel downloads keep working through the phone's browser."
+            echo "- Installs over v1.1 (same signing key); no need to uninstall first."
+            echo "- Falls back to the v1.1 browser tab if the phone's browser can't open it full screen."
+            echo "- Android 6.0+; internet access required. No records, credentials or signing keys are bundled."
+            echo
+            echo "APK SHA-256: \`$SUM\`"
+          } > "$RUNNER_TEMP/notes.md"
+          if gh release view "v$V" > /dev/null 2>&1; then
+            gh release edit "v$V" --title "AttendiFier v$V" --notes-file "$RUNNER_TEMP/notes.md" --latest
+          else
+            gh release create "v$V" --title "AttendiFier v$V" --notes-file "$RUNNER_TEMP/notes.md" --target "$GITHUB_SHA" --latest
+          fi
+          gh release upload "v$V" "$APK" --clobber

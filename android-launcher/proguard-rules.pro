@@ -1,0 +1,4 @@
+-keep public class app.attendifier.mobile.MainActivity { public <init>(); *; }
+-dontobfuscate
+-dontwarn **
+-ignorewarnings
