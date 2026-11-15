@@ -51,7 +51,7 @@ export function MonthlyRecords({ section, userId }: { section: string; userId: s
         <Input id="record-month" type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="w-44" />
         <span className="text-sm text-muted-foreground">{rows.length} scans · {months} saved months</span>
       </div>
-      <p className="mb-4 text-xs text-muted-foreground">Automatic time out: 7:31 AM / 12:51 PM · Not a verified departure. No scan does not confirm absence.</p>
+      <p className="mb-4 text-xs text-muted-foreground">Automatic time out: 7:05 AM / 12:40 PM · Not a verified departure. No scan does not confirm absence.</p>
       {records.isPending ? <p role="status">Loading monthly records…</p> : records.isError ? <p role="alert" className="text-destructive">Couldn’t load monthly records. <Button variant="ghost" onClick={() => records.refetch()}>Retry</Button></p> : rows.length === 0 ? <p className="text-sm text-muted-foreground">No recorded scans for this month.</p> : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">

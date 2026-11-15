@@ -198,8 +198,8 @@ function Scan() {
         )}
 
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <PeriodCard Icon={Sunrise} label="Morning" range="Present 4:00–7:15 AM · Late 7:16–7:30 · Absent 7:31–11:35" row={status?.morning} time={time} />
-          <PeriodCard Icon={Sun} label="Afternoon" range="Present 11:36 AM–12:35 PM · Late 12:36–12:50 · Absent 12:51 onward" row={status?.afternoon} time={time} />
+          <PeriodCard Icon={Sunrise} label="Morning" range="Present 4:00–7:00 AM · Absent after 7:00 · Time out 7:05 AM" row={status?.morning} time={time} />
+          <PeriodCard Icon={Sun} label="Afternoon" range="Present 11:30 AM–12:35 PM · Absent after 12:35 · Time out 12:40 PM" row={status?.afternoon} time={time} />
         </div>
 
         {(status?.morning || status?.afternoon) && (

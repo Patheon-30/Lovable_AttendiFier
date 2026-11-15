@@ -14,21 +14,19 @@ export function parseCode(raw: string): { kind: "gate" } | { kind: "class"; sect
 
 // Minutes after midnight, Manila time.
 const MORNING_START = 4 * 60; // 4:00 AM
-const MORNING_ON_TIME = 7 * 60 + 15;
-const MORNING_LATE_END = 7 * 60 + 30;
-const AFTERNOON_START = 11 * 60 + 36;
-const AFTERNOON_ON_TIME = 12 * 60 + 35;
-const AFTERNOON_LATE_END = 12 * 60 + 50;
+const MORNING_ON_TIME = 7 * 60; // present through 7:00 AM
+const AFTERNOON_START = 11 * 60 + 30; // 11:30 AM
+const AFTERNOON_ON_TIME = 12 * 60 + 35; // present through 12:35 PM
 
+// "late" stays in the type only so older saved records still display.
 export type AttendanceStatus = "present" | "late" | "absent";
 
 export function periodAt(minutes: number): { period: Period; late: boolean; status: AttendanceStatus } | null {
   if (!Number.isFinite(minutes) || minutes < MORNING_START || minutes >= 24 * 60) return null;
   const period = minutes < AFTERNOON_START ? "morning" : "afternoon";
   const presentEnd = period === "morning" ? MORNING_ON_TIME : AFTERNOON_ON_TIME;
-  const lateEnd = period === "morning" ? MORNING_LATE_END : AFTERNOON_LATE_END;
-  const status = minutes <= presentEnd ? "present" : minutes <= lateEnd ? "late" : "absent";
-  return { period, late: status === "late", status };
+  const status: AttendanceStatus = minutes <= presentEnd ? "present" : "absent";
+  return { period, late: false, status };
 }
 
 export function manilaParts(date = new Date()) {
