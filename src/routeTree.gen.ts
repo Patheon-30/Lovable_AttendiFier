@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ClassroomRouteImport } from './routes/classroom'
 import { Route as GateRouteImport } from './routes/gate'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -25,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClassroomRoute = ClassroomRouteImport.update({
+  id: '/classroom',
+  path: '/classroom',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GateRoute = GateRouteImport.update({
@@ -56,6 +62,7 @@ const TeacherRoute = TeacherRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/classroom': typeof ClassroomRoute
   '/gate': typeof GateRoute
   '/practice': typeof PracticeRoute
   '/register': typeof RegisterRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/classroom': typeof ClassroomRoute
   '/gate': typeof GateRoute
   '/practice': typeof PracticeRoute
   '/register': typeof RegisterRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/classroom': typeof ClassroomRoute
   '/gate': typeof GateRoute
   '/practice': typeof PracticeRoute
   '/register': typeof RegisterRoute
@@ -84,13 +93,29 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/gate' | '/practice' | '/register' | '/scan' | '/teacher'
+    | '/'
+    | '/auth'
+    | '/classroom'
+    | '/gate'
+    | '/practice'
+    | '/register'
+    | '/scan'
+    | '/teacher'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/gate' | '/practice' | '/register' | '/scan' | '/teacher'
+  to:
+    | '/'
+    | '/auth'
+    | '/classroom'
+    | '/gate'
+    | '/practice'
+    | '/register'
+    | '/scan'
+    | '/teacher'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/classroom'
     | '/gate'
     | '/practice'
     | '/register'
@@ -101,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  ClassroomRoute: typeof ClassroomRoute
   GateRoute: typeof GateRoute
   PracticeRoute: typeof PracticeRoute
   RegisterRoute: typeof RegisterRoute
@@ -122,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/classroom': {
+      id: '/classroom'
+      path: '/classroom'
+      fullPath: '/classroom'
+      preLoaderRoute: typeof ClassroomRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gate': {
@@ -165,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  ClassroomRoute: ClassroomRoute,
   GateRoute: GateRoute,
   PracticeRoute: PracticeRoute,
   RegisterRoute: RegisterRoute,

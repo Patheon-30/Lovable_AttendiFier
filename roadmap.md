@@ -10,4 +10,4 @@
 - [x] Verify attendance rules and monthly export.
 - [x] Publish the codebase to the user's GitHub repository.
 - [ ] Package a signed browser-backed Android APK for AttendiFier v1.1.
-- [ ] Upload and verify the APK on the GitHub v1.1 release.
+- [ ] Upload and verify the APK on the GitHub v1.1 release.- [x] After a scan, take students to a class view with classmates' and teachers' names.

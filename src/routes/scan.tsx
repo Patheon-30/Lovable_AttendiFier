@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, Fingerprint, LogOut, Sun, Sunrise, Timer } from "lucide-react";
+import { CheckCircle2, Clock, Fingerprint, LogOut, Sun, Sunrise, Timer, Users } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -96,11 +96,11 @@ function Scan() {
         setMsg({ tone: r.status === "present" ? "ok" : "warn", text: `Attendance saved · ${r.status} · ${r.smsSent ? "text is on its way to your parent" : "parent text couldn't be sent right now"}` });
         if (navigator.vibrate) navigator.vibrate(120);
         await stop();
-        refresh();
+        setTimeout(() => navigate({ to: "/classroom" }), 1500);
       } else if (r.result === "cooldown") {
         setMsg({ tone: "warn", text: `You've already checked in for the ${r.period} today.` });
         await stop();
-        refresh();
+        setTimeout(() => navigate({ to: "/classroom" }), 1500);
       } else if (r.result === "closed") setMsg({ tone: "warn", text: "Check-in is closed right now." });
       else if (r.result === "wrong_section") setMsg({ tone: "err", text: `This QR is for ${r.section}, not your section.` });
       else if (r.result === "invalid") setMsg({ tone: "err", text: "That's not a Present QR code." });
@@ -180,6 +180,12 @@ function Scan() {
           <PeriodCard Icon={Sunrise} label="Morning" range="Present 4:00–7:15 AM · Late 7:16–7:30 · Absent 7:31–11:35" row={status?.morning} time={time} />
           <PeriodCard Icon={Sun} label="Afternoon" range="Present 11:36 AM–12:35 PM · Late 12:36–12:50 · Absent 12:51 onward" row={status?.afternoon} time={time} />
         </div>
+
+        {(status?.morning || status?.afternoon) && (
+          <Button variant="secondary" onClick={() => navigate({ to: "/classroom" })} className="mt-6 w-full rounded-xl">
+            <Users className="mr-1 h-4 w-4" />See my class
+          </Button>
+        )}
 
         <Button variant="ghost" size="sm" onClick={signOut} className="mt-6 text-muted-foreground">
           <LogOut className="mr-1 h-4 w-4" />Log out on this phone

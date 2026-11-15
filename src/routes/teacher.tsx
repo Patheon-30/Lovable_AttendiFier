@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { classCode, manilaParts } from "@/lib/periods";
+import { TEACHER_NAME_MAX, teacherDisplayName } from "@/lib/classroom";
 import { QrSheet } from "./gate";
 
 export const Route = createFileRoute("/teacher")({
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/teacher")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
-    return { userId: data.user.id, email: data.user.email };
+    return { userId: data.user.id, email: data.user.email, displayName: teacherDisplayName(data.user.user_metadata) ?? "" };
   },
   head: () => ({
     meta: [
@@ -33,7 +34,9 @@ export const Route = createFileRoute("/teacher")({
 });
 
 function Teacher() {
-  const { userId, email } = Route.useRouteContext();
+  const { userId, email, displayName } = Route.useRouteContext();
+  const [nameInput, setNameInput] = useState(displayName);
+  const [savedName, setSavedName] = useState(displayName);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [sectionInput, setSectionInput] = useState("");
@@ -61,6 +64,15 @@ function Teacher() {
       }));
     },
   });
+
+  async function saveName() {
+    const v = nameInput.trim();
+    if (v.length < 2 || v.length > TEACHER_NAME_MAX) { toast.error("Enter your name, e.g. Ms. Reyes"); return; }
+    const { error } = await supabase.auth.updateUser({ data: { display_name: v } });
+    if (error) { toast.error("Couldn't save your name"); return; }
+    setSavedName(v);
+    toast.success("Name saved — students see it after they scan");
+  }
 
   async function saveSection() {
     const v = sectionInput.trim();
@@ -96,13 +108,21 @@ function Teacher() {
       <main className="mx-auto max-w-3xl px-5 pb-16 pt-8">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm text-muted-foreground">{email}</p>
+            <p className="text-sm text-muted-foreground">{savedName || email}</p>
             <h1 className="text-3xl font-bold">{section || "Set your section"}</h1>
           </div>
           <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="mr-1 h-4 w-4" />Sign out</Button>
         </div>
 
-        <div className="glass mt-6 flex flex-col gap-3 rounded-3xl p-5 sm:flex-row">
+        <div className="glass mt-6 rounded-3xl p-5">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Input value={nameInput} maxLength={TEACHER_NAME_MAX} onChange={(e) => setNameInput(e.target.value)} placeholder="Your name, e.g. Ms. Reyes" aria-label="Your name" />
+            <Button onClick={saveName} variant="secondary" className="rounded-xl">Save name</Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Students in your section see this name after they scan.</p>
+        </div>
+
+        <div className="glass mt-3 flex flex-col gap-3 rounded-3xl p-5 sm:flex-row">
           <Input value={sectionInput} maxLength={50} onChange={(e) => setSectionInput(e.target.value)} placeholder="11-Psalms" />
           <Button onClick={saveSection} className="rounded-xl">Save section</Button>
           <Button variant="secondary" disabled={!section} onClick={() => setShowQr(true)} className="rounded-xl"><Printer className="mr-1 h-4 w-4" />Class QR</Button>

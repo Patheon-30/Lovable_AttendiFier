@@ -22,3 +22,5 @@ Excel compilation runs in the browser from paginated RLS-scoped archived records
 Code reaches the user's GitHub repository through the connector gateway (Contents API for the first commit, then the Git Data API tree); the workspace never runs git push, and the uploaded copy excludes .env, .git, dependencies, and backend config.
 
 Android packaging is a browser-backed launcher for the published HTTPS app, not an embedded WebView, so existing browser camera, passkey, storage, and Excel-download behavior remains intact; APK builds do not bundle server secrets or claim offline support.
+
+Students reach the class view only after a check-in today; a token-checked server function returns section classmates' and teachers' names only, and teacher display names live in account metadata so no schema change is needed.

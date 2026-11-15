@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { manilaParts, parseCode, periodAt } from "./periods";
 import { detectCarrier, normalizePhone } from "./phone";
+import { classmatesOf, escapeLike, sameSection, teacherNames } from "./classroom";
 
 const tokenSchema = z.string().min(20).max(100);
 
@@ -76,4 +77,32 @@ export const recordScan = createServerFn({ method: "POST" })
       );
     }
     return { result: "saved" as const, period: slot.period, late: slot.late, status: slot.status, smsSent };
+  });
+
+// Students see their section's classmates and teachers only after checking in today. Names only.
+export const getClassroom = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ token: tokenSchema }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin, student } = await loadStudent(data.token);
+    if (!student) return { result: "unregistered" as const };
+    const { day } = manilaParts();
+    const { data: today } = await supabaseAdmin.from("attendance").select("period,status").eq("student_id", student.id).eq("day", day);
+    if (!today?.length) return { result: "not_scanned" as const };
+    const pattern = `%${escapeLike(student.section.trim())}%`;
+    const [{ data: peers, error: peersError }, { data: settings, error: settingsError }] = await Promise.all([
+      supabaseAdmin.from("students").select("id,name,section").ilike("section", pattern).limit(1000),
+      supabaseAdmin.from("teacher_settings").select("user_id,section").ilike("section", pattern).limit(50),
+    ]);
+    if (peersError || settingsError) throw new Error("Could not load your class");
+    const teacherIds = (settings ?? []).filter((t) => sameSection(t.section, student.section)).map((t) => t.user_id);
+    const metas = await Promise.all(
+      teacherIds.map(async (id) => (await supabaseAdmin.auth.admin.getUserById(id)).data.user?.user_metadata ?? null),
+    );
+    return {
+      result: "ok" as const,
+      section: student.section.trim(),
+      checkedIn: today.map((r) => ({ period: r.period, status: r.status })),
+      teachers: teacherNames(metas),
+      classmates: classmatesOf(student, peers ?? []),
+    };
   });
