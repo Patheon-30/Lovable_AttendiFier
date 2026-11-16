@@ -39,7 +39,7 @@ describe("live attendance restrictions", () => {
     mocks.insert.mockResolvedValue({ error: { code: "23505" } });
     const result = await recordScan({ data: { token: "test-device-token-123456789", code: GATE_CODE } });
     expect(result).toEqual({ result: "cooldown", period: "morning" });
-    expect(mocks.insert).toHaveBeenCalledWith({ student_id: "student-1", day: "2026-10-25", period: "morning", late: false, status: "absent" });
+    expect(mocks.insert).toHaveBeenCalledWith({ student_id: "student-1", day: "2026-10-25", period: "morning", late: true, status: "late" });
     expect(mocks.sendSms).not.toHaveBeenCalled();
     expect(mocks.student).toHaveBeenCalledTimes(1);
   });

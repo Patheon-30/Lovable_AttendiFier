@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { classCode, manilaParts } from "@/lib/periods";
+import { classCode, manilaParts, missedPeriod } from "@/lib/periods";
 import { TEACHER_NAME_MAX, mergeDuplicateStudents, teacherDisplayName } from "@/lib/classroom";
 import { QrSheet } from "./gate";
 
@@ -98,8 +98,11 @@ function Teacher() {
   }
 
   const rows = roster.data ?? [];
-  const absentAM = rows.filter((r) => !r.morning || r.morning.status === "absent").length;
-  const absentPM = rows.filter((r) => !r.afternoon || r.afternoon.status === "absent").length;
+  const nowMinutes = manilaParts().minutes;
+  const missedAM = missedPeriod("morning", nowMinutes);
+  const missedPM = missedPeriod("afternoon", nowMinutes);
+  const absentAM = rows.filter((r) => r.morning ? r.morning.status === "absent" : missedAM).length;
+  const absentPM = rows.filter((r) => r.afternoon ? r.afternoon.status === "absent" : missedPM).length;
   const fmt = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" });
 
   return (
@@ -146,8 +149,8 @@ function Teacher() {
                     <p className="truncate font-semibold">{r.name}</p>
                     <p className="truncate text-xs text-muted-foreground">{r.parent_name} · {r.parent_phone}{r.carrier ? ` · ${r.carrier}` : ""}</p>
                   </div>
-                  <Badge label="AM" row={r.morning} fmt={fmt} />
-                  <Badge label="PM" row={r.afternoon} fmt={fmt} />
+                  <Badge label="AM" row={r.morning} missed={missedAM} fmt={fmt} />
+                  <Badge label="PM" row={r.afternoon} missed={missedPM} fmt={fmt} />
                   <Button variant="ghost" size="icon" aria-label={`Remove ${r.name}`} onClick={() => remove(r.ids, r.name)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
@@ -177,11 +180,12 @@ function Stat({ label, value, warn }: { label: string; value: number; warn?: boo
   );
 }
 
-function Badge({ label, row, fmt }: { label: string; row: { late: boolean; scanned_at: string; status: string } | undefined; fmt: (s: string) => string }) {
-  const cls = !row || row.status === "absent" ? "bg-destructive/15 text-destructive" : row.late ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary";
+function Badge({ label, row, missed, fmt }: { label: string; row: { late: boolean; scanned_at: string; status: string } | undefined; missed: boolean; fmt: (s: string) => string }) {
+  const late = row && (row.status === "late" || row.late);
+  const cls = !row ? (missed ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground") : row.status === "absent" ? "bg-destructive/15 text-destructive" : late ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary";
   return (
-    <span title={row ? fmt(row.scanned_at) : "Absent"} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>
-      {label} {row ? (row.status === "absent" ? "Absent" : row.late ? "Late" : "✓") : "—"}
+    <span title={row ? fmt(row.scanned_at) : missed ? "No scan · Absent" : "Not scanned yet"} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>
+      {label} {row ? (row.status === "absent" ? "Absent" : late ? "Late" : "✓") : missed ? "Absent" : "—"}
     </span>
   );
 }

@@ -17,17 +17,23 @@ const MORNING_START = 4 * 60; // 4:00 AM
 const MORNING_ON_TIME = 7 * 60; // present through 7:00 AM
 const AFTERNOON_START = 11 * 60 + 30; // 11:30 AM
 const AFTERNOON_ON_TIME = 12 * 60 + 35; // present through 12:35 PM
+const LATE_GRACE = 2 * 60; // late for 2 hours after the present limit, then absent
 
-// "late" stays in the type only so older saved records still display.
 export type AttendanceStatus = "present" | "late" | "absent";
+
+/** Last minute (Manila) a scan still counts as late; after this the period is absent. */
+export const lateUntil = (period: Period) => (period === "morning" ? MORNING_ON_TIME : AFTERNOON_ON_TIME) + LATE_GRACE;
 
 export function periodAt(minutes: number): { period: Period; late: boolean; status: AttendanceStatus } | null {
   if (!Number.isFinite(minutes) || minutes < MORNING_START || minutes >= 24 * 60) return null;
   const period = minutes < AFTERNOON_START ? "morning" : "afternoon";
   const presentEnd = period === "morning" ? MORNING_ON_TIME : AFTERNOON_ON_TIME;
-  const status: AttendanceStatus = minutes <= presentEnd ? "present" : "absent";
-  return { period, late: false, status };
+  const status: AttendanceStatus = minutes <= presentEnd ? "present" : minutes <= lateUntil(period) ? "late" : "absent";
+  return { period, late: status === "late", status };
 }
+
+/** A student with no scan for this period is absent once the late window has passed. */
+export const missedPeriod = (period: Period, minutes: number) => minutes > lateUntil(period);
 
 export function manilaParts(date = new Date()) {
   const f = new Intl.DateTimeFormat("en-US", {

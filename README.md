@@ -20,10 +20,11 @@ to see their class roster live and download a monthly Excel record.
 
 | Period | Present | Late | Absent |
 | --- | --- | --- | --- |
-| Morning | 4:00 – 7:15 AM | 7:16 – 7:30 AM | 7:31 – 11:35 AM |
-| Afternoon | 11:36 AM – 12:35 PM | 12:36 – 12:50 PM | 12:51 PM onward |
+| Morning | 4:00 – 7:00 AM | 7:01 – 9:00 AM | after 9:00 AM |
+| Afternoon | 11:30 AM – 12:35 PM | 12:36 – 2:35 PM | after 2:35 PM |
 
-Time-outs are automatic at the absent cutoffs, so every record has a time in and
+A student who doesn't scan at all is marked absent once the late window ends.
+Time-outs are automatic at 7:05 AM and 12:40 PM, so every record has a time in and
 a time out. A student can check in once per period per day.
 
 ## Stack
